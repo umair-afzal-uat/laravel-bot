@@ -19,9 +19,9 @@ Welcome to the Developers Challenge! This challenge tests your PHP (Laravel fram
 
 The objective is to develop a PHP script that autonomously completes the following steps:
 
-1. **Initiate Registration**: Start the registration process on the specified website. [Completed]
+1. **Initiate Registration**: Start the registration process on the specified website.
 2. **Submit Registration Form**: Fill out and submit the registration form with unique data for each execution.
-3. **Verify Email Address**: Retrieve and verify the email address using the verification code sent to the provided email [Completed and it work for one user-email at a time (because if we want to add other persons emails then their emails authenticated app keys are required)].
+3. **Verify Email Address**: Retrieve and verify the email address using the verification code sent to the provided email [It currently only supports one user email at a time. To add multiple emails, each requires its respective app key for parsing from the backend. If you can provide an array of emails along with their app keys, it would enable seamless processing of multiple emails.].
 4. **Complete ReCaptcha**: Successfully complete the ReCaptcha challenge to finalize the registration.
 
 ## Tech Stack
