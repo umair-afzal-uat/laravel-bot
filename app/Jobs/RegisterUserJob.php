@@ -67,7 +67,11 @@ class RegisterUserJob implements ShouldQueue
             // 3. Verify the email
             $this->verifyEmail();
 
-            // 4. Solve the reCAPTCHA (implement this logic)
+            // 4. Solve the reCAPTCHA 
+            $siteKey = 'YOUR_RECAPTCHA_SITE_KEY'; // Replace with your reCAPTCHA site key
+            $pageUrl = 'https://yoursiteurl/registration-page'; // Replace with your registration page URL
+            $captchaResponse = $this->solveRecaptcha($csrf_token, $siteKey, $pageUrl);
+            // 5. Further processing after solving CAPTCHA
 
         } catch (RequestException $e) {
             Log::error('Registration automation error: ' . $e->getMessage());
@@ -145,13 +149,77 @@ class RegisterUserJob implements ShouldQueue
 
 
     /**
-     * Solve the reCAPTCHA.
+     * Solve the reCAPTCHA using 2Captcha service.
      *
-     * @return void
+     * @param string $csrfToken
+     * @param string $siteKey
+     * @param string $pageUrl
+     * @return string|null Captcha response or null on failure
+     * @throws Exception
      */
-    protected function solveRecaptcha()
+    protected function solveRecaptcha(string $csrfToken, string $siteKey, string $pageUrl): ?string
     {
-        // Implement reCAPTCHA solving logic here
-        // This could involve using a third-party service or API to solve the reCAPTCHA
+        $client = new Client();
+        $apiKey = 'YOUR_2CAPTCHA_API_KEY'; // Replace with your 2Captcha API key
+
+        try {
+            // 1. Request solving captcha from 2Captcha API
+            $response = $client->post('http://2captcha.com/in.php', [
+                'form_params' => [
+                    'key' => $apiKey,
+                    'method' => 'userrecaptcha',
+                    'googlekey' => $siteKey,
+                    'pageurl' => $pageUrl,
+                    'json' => 1, // JSON response format
+                ]
+            ]);
+
+            $responseData = json_decode($response->getBody(), true);
+
+            if ($responseData['status'] == 0) {
+                throw new Exception('2Captcha API error: ' . $responseData['request']);
+            }
+
+            $captchaId = $responseData['request'];
+
+            // 2. Polling 2Captcha for the response
+            $maxAttempts = 10;
+            $pollInterval = 5; // seconds
+            $attempts = 0;
+            $captchaResponse = '';
+
+            do {
+                sleep($pollInterval);
+                $response = $client->get('http://2captcha.com/res.php', [
+                    'query' => [
+                        'key' => $apiKey,
+                        'action' => 'get',
+                        'id' => $captchaId,
+                        'json' => 1, // JSON response format
+                    ]
+                ]);
+
+                $responseData = json_decode($response->getBody(), true);
+
+                if ($responseData['status'] == 1) {
+                    $captchaResponse = $responseData['request'];
+                    break;
+                }
+
+                $attempts++;
+            } while ($attempts < $maxAttempts);
+
+            if (empty($captchaResponse)) {
+                throw new Exception('Failed to solve CAPTCHA within the maximum attempts.');
+            }
+
+            return $captchaResponse;
+        } catch (RequestException $e) {
+            Log::error('CAPTCHA solving request failed: ' . $e->getMessage());
+            throw new Exception('CAPTCHA solving request failed: ' . $e->getMessage());
+        } catch (Exception $e) {
+            Log::error('CAPTCHA solving error: ' . $e->getMessage());
+            throw new Exception('CAPTCHA solving error: ' . $e->getMessage());
+        }
     }
 }
